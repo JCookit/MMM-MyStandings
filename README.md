@@ -544,6 +544,59 @@ There are several ways to display standings for a given league only at certain t
 
 Another way to do it is to dynamically create a module with the desired leagues based on the date by adding some javascript to your config.js file, as offered by user [mikeyounge](https://github.com/mikeyounge) in [this discussion thread](https://github.com/dathbe/MMM-MyScoreboard/issues/56).
 
+## Architecture Refactoring (JCookit Fork)
+
+**Note**: This section documents significant architectural changes made in the JCookit fork to fix timing issues and improve module compatibility.
+
+### Background
+
+Refactoring was done in order to have freedom to change the UX completely without worrying about the timing of the data refreshes.
+
+### Architectural Changes
+
+The module has been refactored to follow proper MagicMirror design patterns with a clear separation between frontend UI management and backend data operations:
+
+#### Frontend (`MMM-MyStandings.js`)
+- **Purpose**: UI management, display rotation, and user interaction
+- **Responsibilities**:
+  - Managing display rotation timer (`rotateInterval`)
+  - Handling show/hide/stop methods for MMM-pages integration
+  - Processing and displaying data received from node_helper
+  - DOM update timing protection to prevent conflicts during fade animations
+
+#### Backend (`node_helper.js`)
+- **Purpose**: Data fetching, timer management, and API coordination
+- **Responsibilities**:
+  - Managing data fetch timer (`updateInterval`) independently from UI rotation
+  - Coordinating API calls to ESPN for all configured sports
+  - URL generation and sport group matching logic
+  - Data aggregation and completion tracking
+
+### Key Improvements
+
+1. **Timer Separation**: Data fetching schedule is now completely independent from UI rotation schedule, eliminating race conditions
+2. **Proper Socket Communication**: Clean notification flow between frontend and backend layers
+3. **MMM-pages Compatibility**: Show/hide methods only control UI rotation; data continues fetching on schedule
+4. **Timing Protection**: `isUpdating` flag prevents DOM conflicts during fade animations
+5. **Method Inheritance**: Proper MagicMirror module inheritance pattern without function override collisions
+
+### Notification Flow
+
+```
+Frontend → Backend: MMM-MYSTANDINGS-START-DATA-TIMER (on module start)
+Backend → Frontend: MMM-MYSTANDINGS-DATA (completed data for each sport)
+Backend → Frontend: MMM-MYSTANDINGS-DATA-[SPORT] (individual sport data)
+```
+
+### Legacy Code Cleanup
+
+To maintain code clarity, the following legacy components have been commented out:
+- Original `getData()` function containing old URL generation logic
+- Sport group arrays (moved to node_helper)
+- Unused debugging variables and helper functions
+
+This refactoring ensures reliable data fetching, smooth UI rotation, and compatibility with other MagicMirror modules while maintaining all original functionality.
+
 ## Contributing
 
 If you find any problems, bugs or have questions, please [open a GitHub issue](https://github.com/dathbe/MMM-MyStandings/issues) in this repository.
