@@ -595,6 +595,16 @@ To maintain code clarity, the following legacy components have been commented ou
 - Sport group arrays (moved to node_helper)
 - Unused debugging variables and helper functions
 
+### Smart UI Timer Management
+
+The UI rotation timer now intelligently starts and stops based on module visibility:
+- **On Start**: Data fetching begins immediately, but UI rotation waits for module to become visible
+- **On Show**: UI rotation timer starts, and if data is available, immediately displays current standings
+- **On Hide**: UI rotation timer stops (data fetching continues in background)
+- **On Stop**: All timers are cleaned up properly
+
+This ensures optimal performance and proper integration with modules like MMM-pages that control visibility.
+
 This refactoring ensures reliable data fetching, smooth UI rotation, and compatibility with other MagicMirror modules while maintaining all original functionality.
 
 ## Contributing

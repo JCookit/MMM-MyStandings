@@ -131,8 +131,9 @@ Module.register('MMM-MyStandings', {
       sports: this.config.sports
     })
 
-    // Start UI rotation timer  
-    this.startRotationTimer()
+    // DO NOT start UI rotation timer here - it will be started when module becomes visible
+    // This ensures compatibility with MMM-pages and other modules that control visibility
+    Log.info(`[MMM-MyStandings] Module started, waiting for show() to begin UI rotation`)
   },
 
   // Define required styles.
@@ -402,7 +403,9 @@ Module.register('MMM-MyStandings', {
       this.rotationTimer = setInterval(function () {
         self.rotateStandings()
       }, this.config.rotateInterval)
-      Log.info('[MMM-MyStandings] UI rotation timer started')
+      Log.info(`[MMM-MyStandings] UI rotation timer started (${this.config.rotateInterval}ms interval)`)
+    } else {
+      Log.info('[MMM-MyStandings] UI rotation timer already running')
     }
   },
 
@@ -421,7 +424,15 @@ Module.register('MMM-MyStandings', {
     
     // Start the UI rotation timer when module becomes visible
     this.startRotationTimer()
-    Log.info('[MMM-MyStandings] Module shown, UI rotation started')
+    
+    // If we have data available, immediately display current standings
+    // rather than waiting for the next rotation interval
+    if (this.standingsInfo && this.standingsInfo.length > 0) {
+      Log.info('[MMM-MyStandings] Module shown with existing data, displaying current standings')
+      this.updateDom(this.config.fadeSpeed)
+    } else {
+      Log.info('[MMM-MyStandings] Module shown, no data yet, rotation started')
+    }
   },
 
   // Override hide method for MMM-pages integration  
@@ -431,7 +442,7 @@ Module.register('MMM-MyStandings', {
     
     // Stop the UI rotation timer when module is hidden
     this.stopRotationTimer()
-    Log.info('[MMM-MyStandings] Module hidden, UI rotation stopped')
+    Log.info('[MMM-MyStandings] Module hidden, UI rotation stopped (data fetching continues)')
   },
 
   // Override stop method for proper cleanup
