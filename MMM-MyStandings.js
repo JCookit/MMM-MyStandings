@@ -22,6 +22,7 @@ Module.register('MMM-MyStandings', {
     rankingLength: 25,
     colored: true, // true, then display logos in color.  false, then display logos in grayscale
     addLeagueToTitle: true,
+    useFakeDate: null, // For testing - set to "MM-DD" format to spoof current date (e.g., "07-15" for July 15)
   },
 
   url: 'https://site.api.espn.com/apis/v2/sports/',
@@ -125,7 +126,8 @@ Module.register('MMM-MyStandings', {
     this.sendSocketNotification('MMM-MYSTANDINGS-START-DATA-TIMER', {
       uniqueID: this.identifier,
       updateInterval: this.config.updateInterval,
-      sports: this.config.sports // Send original sports config
+      sports: this.config.sports, // Send original sports config
+      useFakeDate: this.config.useFakeDate // For testing date functionality
     })
 
     // DO NOT start UI rotation timer here - it will be started when module becomes visible
