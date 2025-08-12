@@ -44,6 +44,7 @@ Module.register('MMM-MyStandings', {
   currentDivision: null,
   ignoreDivision: false,
   isLoaded: false,
+  needsRepaintOnShow: true,
   hasMoreDivisions: false,
   localLogos: {},
   localLogosCustom: {},
@@ -119,16 +120,12 @@ Module.register('MMM-MyStandings', {
       this.sendSocketNotification('MMM-MYSTANDINGS-GET-LOCAL-LOGOS', { uniqueID: this.identifier })
     }
 
-    // Start data timer in node_helper (data fetching is now managed there)
-    Log.info(`[MMM-MyStandings] Starting data timer for ${this.identifier} with sports:`, this.config.sports.map(sport => ({
-      league: sport.league,
-      groups: sport.groups,
-      hasGroups: !!sport.groups
-    })))
+    // Send original config to node_helper - date filtering will be done there
+    Log.info(`[MMM-MyStandings] Starting data timer for ${this.identifier}`)
     this.sendSocketNotification('MMM-MYSTANDINGS-START-DATA-TIMER', {
       uniqueID: this.identifier,
       updateInterval: this.config.updateInterval,
-      sports: this.config.sports
+      sports: this.config.sports // Send original sports config
     })
 
     // DO NOT start UI rotation timer here - it will be started when module becomes visible
@@ -330,6 +327,7 @@ Module.register('MMM-MyStandings', {
 
   socketNotificationReceived: function (notification, payload) {
     Log.info(`[MMM-MyStandings] Received notification: ${notification} for ${payload.uniqueID}, my ID: ${this.identifier}`)
+    console.log(`[MMM-MyStandings] DEBUG: Received notification: ${notification} for ${payload.uniqueID}, my ID: ${this.identifier}`)
     
     if (payload.uniqueID !== this.identifier) {
       Log.warn(`[MMM-MyStandings] Ignoring notification for different instance: ${payload.uniqueID}`)
@@ -338,15 +336,18 @@ Module.register('MMM-MyStandings', {
 
     var receivedLeague = notification.split('-')[1]
     Log.info(`[MMM-MyStandings] Processing notification: ${notification}, league: ${receivedLeague}`)
+    console.log(`[MMM-MyStandings] DEBUG: Processing notification: ${notification}, league: ${receivedLeague}`)
     
     if (notification.includes('Rankings')) {
       Log.info(`[MMM-MyStandings] Processing rankings data for ${receivedLeague}`)
+      console.log(`[MMM-MyStandings] DEBUG: Processing rankings data for ${receivedLeague}`)
       this.standingsInfo.push(this.cleanupRankings(payload.result.rankings, receivedLeague))
       this.standingsSportInfo.push(receivedLeague)
       Log.info(`[MMM-MyStandings] Standings info now has ${this.standingsInfo.length} items`)
     }
     else if (notification.startsWith('STANDINGS_RESULT')) {
       Log.info(`[MMM-MyStandings] Processing standings result for ${receivedLeague}`)
+      console.log(`[MMM-MyStandings] DEBUG: Processing standings result for ${receivedLeague}`)
       Log.info(`[MMM-MyStandings] Raw API data structure:`, {
         hasStandings: !!payload.result.standings,
         hasChildren: !!payload.result.children,
@@ -355,27 +356,33 @@ Module.register('MMM-MyStandings', {
       })
       
       if (notification.startsWith('STANDINGS_RESULT_SNET')) {
+        console.log(`[MMM-MyStandings] DEBUG: Processing SNET data`)
         this.standingsInfo.push(this.cleanupSNETData(payload.result, receivedLeague))
       }
       else if (payload.result.standings) {
         Log.info(`[MMM-MyStandings] Using result.standings path`)
+        console.log(`[MMM-MyStandings] DEBUG: Using result.standings path`)
         this.standingsInfo.push(this.cleanupData(payload.result, receivedLeague))
       }
       else {
         Log.info(`[MMM-MyStandings] Using result.children path`)
+        console.log(`[MMM-MyStandings] DEBUG: Using result.children path`)
         this.standingsInfo.push(this.cleanupData(payload.result.children, receivedLeague))
       }
       
       const lastProcessedData = this.standingsInfo.at(-1)
       Log.info(`[MMM-MyStandings] Processed data length: ${lastProcessedData ? lastProcessedData.length : 'null'}`)
+      console.log(`[MMM-MyStandings] DEBUG: Processed data length: ${lastProcessedData ? lastProcessedData.length : 'null'}`)
       
       if (this.standingsInfo.at(-1).length === 0) {
         Log.warn(`[MMM-MyStandings] Empty standings data for ${receivedLeague}, removing`)
+        console.log(`[MMM-MyStandings] DEBUG: Empty standings data for ${receivedLeague}, removing`)
         this.standingsInfo.pop()
       }
       else {
         this.standingsSportInfo.push(receivedLeague)
         Log.info(`[MMM-MyStandings] Added standings for ${receivedLeague}, total: ${this.standingsInfo.length}`)
+        console.log(`[MMM-MyStandings] DEBUG: Added standings for ${receivedLeague}, total: ${this.standingsInfo.length}`)
       }
     }
     else if (notification === 'MMM-MYSTANDINGS-LOCAL-LOGO-LIST') {
@@ -385,7 +392,9 @@ Module.register('MMM-MyStandings', {
     }
     else if (notification === 'MMM-MYSTANDINGS-ALL-DATA-RECEIVED') {
       Log.info(`[MMM-MyStandings] All data received! standings count: ${this.standingsInfo.length}, current standings: ${this.standings}`)
-      // UNUSED: this.dataFetchInProgress = false  // Only for debugging, no logic depends on this
+      console.log(`[MMM-MyStandings] DEBUG: All data received! Final standingsInfo:`, this.standingsInfo)
+      console.log(`[MMM-MyStandings] DEBUG: Final standingsSportInfo:`, this.standingsSportInfo)
+      this.needsRepaintOnShow = true
       // Trigger initial UI load if this is the first data fetch
       if (this.standings === null) {
         Log.info(`[MMM-MyStandings] First data fetch complete, triggering initial UI load`)
@@ -393,6 +402,13 @@ Module.register('MMM-MyStandings', {
       } else {
         Log.info(`[MMM-MyStandings] Data refresh complete, standings already loaded`)
       }
+    }
+    else if (notification === 'MMM-MYSTANDINGS-DATA-FETCH-START') {
+      Log.info(`[MMM-MyStandings] Data fetch starting - clearing previous data`)
+      // Clear existing data arrays for fresh data
+      this.standingsInfo = []
+      this.standingsSportInfo = []
+      this.ctRotate = 0
     }
   },
 
@@ -427,12 +443,15 @@ Module.register('MMM-MyStandings', {
     
     // If we have data available, immediately display current standings
     // rather than waiting for the next rotation interval
-    if (this.standingsInfo && this.standingsInfo.length > 0) {
+    if (this.standingsInfo && this.standingsInfo.length > 0 && this.needsRepaintOnShow) {
       Log.info('[MMM-MyStandings] Module shown with existing data, displaying current standings')
+
+      this.needsRepaintOnShow = false
       this.updateDom(this.config.fadeSpeed)
     } else {
       Log.info('[MMM-MyStandings] Module shown, no data yet, rotation started')
     }
+    Log.info('[MMM-MyStandings] Module shown');
   },
 
   // Override hide method for MMM-pages integration  
@@ -443,6 +462,7 @@ Module.register('MMM-MyStandings', {
     // Stop the UI rotation timer when module is hidden
     this.stopRotationTimer()
     Log.info('[MMM-MyStandings] Module hidden, UI rotation stopped (data fetching continues)')
+    this.needsRepaintOnShow = true
   },
 
   // Override stop method for proper cleanup
@@ -492,6 +512,8 @@ Module.register('MMM-MyStandings', {
         return
       }
 
+      this.needsRepaintOnShow = true
+
       var isLastDivisionInSport = false
       this.ignoreDivision = false
 
@@ -533,6 +555,8 @@ Module.register('MMM-MyStandings', {
         return
       }
 
+      this.needsRepaintOnShow = true
+
       Log.info(`[MMM-MyStandings] Updating DOM (no division mode) with fadeSpeed: ${this.config.fadeSpeed}`)
       this.updateDom(this.config.fadeSpeed)
       
@@ -549,17 +573,11 @@ Module.register('MMM-MyStandings', {
   // For sake of size of the arrays, let us remove items that we do not particularly care about
   cleanupData: function (standingsObject, sport) {
     Log.info(`[MMM-MyStandings] cleanupData called for sport: ${sport}`)
-    Log.info(`[MMM-MyStandings] cleanupData input:`, {
-      isArray: Array.isArray(standingsObject),
-      length: standingsObject ? standingsObject.length : 'no length',
-      hasStandings: standingsObject ? !!standingsObject.standings : false,
-      type: typeof standingsObject
-    })
     
     var g, h, i, j
     var formattedStandingsObject = []
     /* var isSoccer = false */
-
+    
     if (standingsObject.standings !== undefined) {
       formattedStandingsObject.push(standingsObject)
     }
@@ -582,19 +600,16 @@ Module.register('MMM-MyStandings', {
     }
 
     // division
+    Log.info(`[MMM-MyStandings] Processing ${formattedStandingsObject.length} divisions for ${sport}`)
     for (h = 0; h < formattedStandingsObject.length; h++) {
       var hasMatch = false
 
-      Log.info(`[MMM-MyStandings] Checking division ${h}: "${formattedStandingsObject[h].name}"`)
+      Log.info(`[MMM-MyStandings] Checking division: "${formattedStandingsObject[h].name}"`)
 
       // We only want to show divisions/groups that we have configured
       for (var leagueIdx in this.config.sports) {
         if (this.config.sports[leagueIdx].league === sport) {
-          Log.info(`[MMM-MyStandings] Found matching sport config for ${sport}:`, {
-            configuredGroups: this.config.sports[leagueIdx].groups,
-            divisionName: formattedStandingsObject[h].name,
-            hasGroupsConfig: this.config.sports[leagueIdx].groups !== undefined
-          })
+          Log.info(`[MMM-MyStandings] Found matching sport config for ${sport}`)
           
           if ((this.config.sports[leagueIdx].groups !== undefined && this.config.sports[leagueIdx].groups.includes(formattedStandingsObject[h].name)) || this.config.sports[leagueIdx].groups === undefined) {
             hasMatch = true
@@ -602,6 +617,7 @@ Module.register('MMM-MyStandings', {
           }
           // Also check if this division's parent conference matches our configured groups
           else if (this.config.sports[leagueIdx].groups !== undefined) {
+            
             const isMLBAmericanLeague = sport === 'MLB' && formattedStandingsObject[h].name === 'American League' && 
               this.config.sports[leagueIdx].groups.some(group => group.includes('American League'))
             const isMLBNationalLeague = sport === 'MLB' && formattedStandingsObject[h].name === 'National League' && 
@@ -655,8 +671,9 @@ Module.register('MMM-MyStandings', {
         }
       }
 
-      // Check to see if we have standings entries
+      // Check to see if we have standings entries      
       if (hasMatch === false || formattedStandingsObject[h] === null || formattedStandingsObject[h].standings === undefined || formattedStandingsObject[h].standings.entries === undefined) {
+        Log.warn(`[MMM-MyStandings] Rejecting division "${formattedStandingsObject[h]?.name}" - validation failed`)
         formattedStandingsObject[h] = null
         continue
       }
@@ -1259,7 +1276,11 @@ Module.register('MMM-MyStandings', {
       }
     }
 
-    return formattedStandingsObject.filter(Boolean)
+    // Final filtering and return
+    const finalResults = formattedStandingsObject.filter(Boolean)
+    Log.info(`[MMM-MyStandings] cleanupData complete - returning ${finalResults.length} divisions for ${sport}`)
+
+    return finalResults
   },
 
   // For sake of size of the arrays, let us remove items that we do not particularly care about (Olympics version)

@@ -10,6 +10,101 @@ module.exports = NodeHelper.create({
     this.pendingFetches = {} // Track pending data fetches per module
   },
 
+  // Check if current date is within the specified date range
+  isDateInRange: function(fromDate, toDate) {
+    if (!fromDate && !toDate) {
+      return true // No date restriction
+    }
+    
+    fromDate = fromDate || '01-01'
+    toDate = toDate || '12-31'
+    
+    const now = new Date()
+    const current = {
+      month: now.getMonth() + 1,
+      day: now.getDate()
+    }
+    
+    const from = this.parseMMDD(fromDate)
+    const to = this.parseMMDD(toDate)
+    
+    // Helper function to convert month/day to comparable number (MMDD)
+    const toComparableNumber = (monthDay) => monthDay.month * 100 + monthDay.day
+    
+    const currentComparable = toComparableNumber(current)
+    const fromComparable = toComparableNumber(from)
+    const toComparable = toComparableNumber(to)
+    
+    if (fromComparable <= toComparable) {
+      // Normal range (e.g., 03-01 to 11-01)
+      return currentComparable >= fromComparable && currentComparable <= toComparable
+    } else {
+      // Wrap-around range (e.g., 10-01 to 03-31)
+      return currentComparable >= fromComparable || currentComparable <= toComparable
+    }
+  },
+
+  // Parse MM-DD format string to month/day object
+  parseMMDD: function(dateStr) {
+    if (!dateStr) return { month: 1, day: 1 }
+    
+    const parts = dateStr.split('-')
+    return {
+      month: parseInt(parts[0], 10) || 1,
+      day: parseInt(parts[1], 10) || 1
+    }
+  },
+
+  // Check if a sport should be active based on league and group date ranges
+  isSportActive: function(sport) {
+    // Check league-level dates first
+    if (!this.isDateInRange(sport.from, sport.to)) {
+      return false
+    }
+    
+    // If no groups, sport is active based on league dates only
+    if (!sport.groups || sport.groups.length === 0) {
+      return true
+    }
+    
+    // Check if any group is active (groups can be strings or objects with date ranges)
+    return sport.groups.some(group => {
+      if (typeof group === 'string') {
+        // String group inherits league dates
+        return true // Already checked league dates above
+      } else if (typeof group === 'object' && group.name) {
+        // Object group with potential date override
+        const groupFrom = group.from || sport.from
+        const groupTo = group.to || sport.to
+        return this.isDateInRange(groupFrom, groupTo)
+      }
+      return false
+    })
+  },
+
+  // Get active groups for a sport (only groups that are in date range)
+  getActiveGroups: function(sport) {
+    if (!sport.groups || sport.groups.length === 0) {
+      return []
+    }
+    
+    return sport.groups.filter(group => {
+      if (typeof group === 'string') {
+        // String group uses league dates
+        return this.isDateInRange(sport.from, sport.to)
+      } else if (typeof group === 'object' && group.name) {
+        // Object group with potential date override
+        const groupFrom = group.from || sport.from
+        const groupTo = group.to || sport.to
+        return this.isDateInRange(groupFrom, groupTo)
+      }
+      return false
+    }).map(group => {
+      // Normalize to group name string for URL generation
+      return typeof group === 'string' ? group : group.name
+    })
+  },
+
   getDirectoryTree(dirPath) {
     const result = []
     const files = fs.readdirSync(dirPath, { withFileTypes: true })
@@ -194,17 +289,39 @@ module.exports = NodeHelper.create({
   fetchAllData: function(config) {
     const uniqueID = config.uniqueID
     
+    // Notify frontend that data fetch is starting (clears old data)
+    this.sendSocketNotification('MMM-MYSTANDINGS-DATA-FETCH-START', { uniqueID })
+    
     // Initialize pending counter for this fetch
     this.pendingFetches[uniqueID] = 0
     
     Log.info(`[MMM-MyStandings-Helper] Starting data fetch for ${uniqueID}, sports:`, config.sports)
     
+    // Filter sports based on date ranges
+    const activeSports = config.sports.filter(sport => this.isSportActive(sport))
+    
+    Log.info(`[MMM-MyStandings-Helper] Date filtering: ${config.sports.length} configured sports, ${activeSports.length} active for current date`)
+    
+    if (activeSports.length === 0) {
+      Log.info(`[MMM-MyStandings-Helper] No sports active for current date, sending empty data`)
+      this.sendSocketNotification('MMM-MYSTANDINGS-ALL-DATA-RECEIVED', { uniqueID })
+      return
+    }
+    
     // Count total URLs to fetch
     let totalUrls = 0
     
-    for (var i = 0; i < config.sports.length; i++) {
-      var sportUrls = this.getSportUrls(config.sports[i], config)
-      Log.info(`[MMM-MyStandings-Helper] Sport ${config.sports[i].league} generated ${sportUrls.length} URLs`)
+    for (var i = 0; i < activeSports.length; i++) {
+      // Create a modified sport config with only active groups
+      const sportWithActiveGroups = {
+        ...activeSports[i],
+        groups: this.getActiveGroups(activeSports[i])
+      }
+      
+      Log.info(`[MMM-MyStandings-Helper] Sport ${sportWithActiveGroups.league}: ${activeSports[i].groups?.length || 0} configured groups, ${sportWithActiveGroups.groups.length} active groups`)
+      
+      var sportUrls = this.getSportUrls(sportWithActiveGroups, config)
+      Log.info(`[MMM-MyStandings-Helper] Sport ${sportWithActiveGroups.league} generated ${sportUrls.length} URLs`)
       totalUrls += sportUrls.length
       
       // Fetch each URL for this sport
@@ -214,11 +331,11 @@ module.exports = NodeHelper.create({
         Log.info(`[MMM-MyStandings-Helper] Queuing fetch ${this.pendingFetches[uniqueID]}: ${url}`)
         
         // Determine the notification suffix based on URL type
-        let notificationSuffix = config.sports[i].league
+        let notificationSuffix = sportWithActiveGroups.league
         if (url.includes('view=playoff')) {
-          notificationSuffix = config.sports[i].league + '_PLAYOFFS'
+          notificationSuffix = sportWithActiveGroups.league + '_PLAYOFFS'
         } else if (url.includes('view=wild-card')) {
-          notificationSuffix = config.sports[i].league + '_WILDCARD'
+          notificationSuffix = sportWithActiveGroups.league + '_WILDCARD'
         }
         
         if (url.includes('stats-api.sportsnet.ca/web_standings')) {
