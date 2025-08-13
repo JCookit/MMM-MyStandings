@@ -1,6 +1,6 @@
 .MMM-MyStandings {
-	min-width: 300px;
-	margin-top: 10px;
+	min-width: 15em; /* Minimum width relative to font size */
+	margin-top: 0.5em; /* Margin relative to font size */
 }
 
 .MMM-MyStandings .standings {
@@ -8,29 +8,40 @@
 	font-size: 20px;
 }
 
+/* Consistent row heights and tight spacing */
+.MMM-MyStandings .standings tr {
+	height: 1.3em; /* Consistent row height relative to font size */
+}
+
+.MMM-MyStandings .standings td {
+	line-height: 1.0em; /* Tight line spacing relative to font size */
+	vertical-align: middle; /* Center content vertically in each cell */
+}
+
 .MMM-MyStandings .league-separator {
-	font-size: 15.5px;
-	line-height: 18px;
+	font-size: 1.0em; /* Separator font size relative to base font (15.5/20) */
+	line-height: 1.0em; /* Line height relative to separator font size */
 	text-transform: uppercase;
-	margin-top: 10px;
+	margin-top: 0.5em; /* Margin relative to base font size */
 	border-bottom: solid 1px #222;
 	text-align: left;
 	padding: 0;
 }
 
 .MMM-MyStandings .league-separator > td > span {
-	color: #000;
+	color: var(--color-text-bright);
 	font-weight: bold;
-	padding-left: 6px;
-	padding-right: 2px;
-	background-color: #FFF;
+	padding-left: 0.3em; /* Padding relative to font size */
+	padding-right: 0.1em;
+	/* background-color: #FFF; */
 	display: inline-block;
 	vertical-align: top;
 	position: relative;
 	white-space: nowrap;
 }
 
-/* creates the trigangle after the division name */
+/* creates the triangle after the division name */
+/*
 .MMM-MyStandings .league-separator > td > span:after {
 	content: "";
 	width: 0;
@@ -38,38 +49,40 @@
 	display: inline-block;
 	vertical-align: top;
 	border-style: solid;
-	border-width: 18px 0 0 15px;
+	border-width: 0.9em 0 0 0.75em; 
 	border-color: transparent transparent transparent #FFF;
-	margin-right: -15px;
+	margin-right: -0.75em;
 	position: relative;
-	right: -2px;
+	right: -0.1em;
 }
+*/
 
 .MMM-MyStandings .logo {
 	padding: 0;
-	max-width: 30px;
+	width: 1.5em; /* Logo cell width relative to font size */
+	text-align: center;
 }
 
 .MMM-MyStandings .logo img {
-	position: relative;
-	top: 3px;
-	max-width: 30px;
-	max-height: 25px;
+	max-width: 1.5em; /* Logo width relative to font size */
+	max-height: 1.1em; /* Logo height relative to font size */
+	vertical-align: middle; /* Center logo vertically */
 }
 
 .MMM-MyStandings .nameCell {
 	text-align: left;
-	padding: 0 0 0 7px;
+	padding: 0 0 0 0.35em; /* Padding relative to font size */
+	color: var(--color-text-bright);
 }
 
 .MMM-MyStandings .nameCellNoLogo {
 	text-align: left;
-	padding: 0 0 0 1px;
+	padding: 0 0 0 0.05em; /* Minimal padding relative to font size */
 }
 
 .MMM-MyStandings .dataCell {
 	text-align: right;
-	padding: 0 0 0 7px;
+	padding: 0 0 0 0.35em; /* Padding relative to font size */
 }
 
 .MMM-MyStandings .league-separator .dataCell {
@@ -83,19 +96,15 @@
 .MMM-MyStandings .rank {
 	display: inline;
 	color: #000;
-	background-color: #C0FF00;
-	font-size: 12px;
+	background-color: #f8d700;
+	font-size: 0.6em; /* Rank font size relative to base font */
 	font-weight: bold;
-	line-height: 13px;
-	height: 13px;
-	padding: 0 2px;
-	margin-right: 0px;
+	line-height: 1em;
+	padding: 0 0.2em; /* Padding relative to rank font size */
+	margin-right: 0;
 	margin-bottom: 0;
-	/*border-bottom: solid 1px #000;
-	border-left: solid 1px #000;*/
-	border-radius: 2px;
-	position: relative;
-	bottom: 3px;
+	border-radius: 0.15em; /* Border radius relative to rank font size */
+	vertical-align: middle;
 }
 
 .MMM-MyStandings tr > td:last-of-type {
@@ -104,4 +113,14 @@
 
 .MMM-MyStandings .grayscale {
 	filter: grayscale(100%);
+}
+
+/* Team highlighting styles */
+.MMM-MyStandings .highlighted-team {
+	background-color: rgba(255, 215, 0, 0.1); /* Subtle gold background for highlighted team row */
+}
+
+.MMM-MyStandings .highlighted-team-name {
+	color: #FFD700; /* Gold color for highlighted team name */
+	font-weight: bold;
 }

@@ -45,11 +45,16 @@ Add MMM-MyStandings module to the `modules` array in the `config/config.js` file
     sports: [
       // See below in the README for different league and group options 
       { league: "WNBA", groups: ["Women's National Basketball Assoc."] },
-      { league: "MLB", groups: ["NL Wild Card"] },
+      { league: "MLB", groups: ["NL Wild Card"], highlightTeam: "LAD" },
       { league: "NCAAF", groups: ["Big Ten Conference", "Conference USA"] },
       { league: "NCAAF Rankings", groups: ["AFCA Coaches Poll"] },
       { league: "English Premier League" },
-      { league: "FIFA World Cup", groups: ["Group C", "Group E"] }
+      { 
+        league: "FIFA World Cup", 
+        groups: ["Group C", "Group E"],
+        from: "11-01",
+        to: "12-31"
+      }
     ]
   }
 },
@@ -68,6 +73,111 @@ Add MMM-MyStandings module to the `modules` array in the `config/config.js` file
 | fadeSpeed        | Time in milliseconds to fade in the module<br><br>**Type:** `int` <br> **Default value:** `2000` (2 seconds)
 | rankingLength    | The number of teams to display when using `NCAAF Rankings`, `NCAAM Rankings`, `NCAAW Rankings`, or `Olympics`<br><br>**Type:** `int` <br> **Default value:** `25`
 | addLeagueToTitle | Adds the league name to the displayed table title<br><br>**Type:** `boolean` <br> **Default value:** `true`
+| useFakeDate      | **For testing only** - Override current date for testing date-based features. Use MM-DD format (e.g., "07-15" for July 15th)<br><br>**Type:** `string` or `null` <br> **Default value:** `null`
+
+## Advanced Sport Configuration
+
+In addition to basic `league` and `groups` options, each sport entry supports additional advanced features:
+
+### Team Highlighting
+
+Highlight a specific team with special styling (gold text and subtle background):
+
+```javascript
+{ 
+  league: "MLB", 
+  groups: ["American League West"], 
+  highlightTeam: "SEA" 
+}
+```
+
+- **highlightTeam**: Team abbreviation to highlight (e.g., "SEA", "NYY", "LAL", "BOS")
+- The highlighted team will appear with gold text and background wherever it appears in any group
+- Works across regular season, playoffs, and wildcards for the same league
+- Use standard ESPN team abbreviations
+
+### Date-Based Filtering
+
+Control when sports are displayed based on calendar dates:
+
+```javascript
+{ 
+  league: "NFL", 
+  groups: ["AFC North"], 
+  from: "09-01",    // Show starting September 1st
+  to: "02-15"       // Hide after February 15th
+},
+{ 
+  league: "MLB", 
+  groups: ["National League West"],
+  from: "03-15",    // Show starting March 15th  
+  to: "10-31"       // Hide after October 31st
+}
+```
+
+- **from**: Start date in MM-DD format (e.g., "09-01" for September 1st)
+- **to**: End date in MM-DD format (e.g., "02-15" for February 15th)
+- Supports year-wrapping (e.g., from "10-01" to "03-31" covers Oct-Mar)
+- If only `from` is specified, sport shows from that date through end of year
+- If only `to` is specified, sport shows from beginning of year through that date
+- Groups within a sport can have their own date overrides
+
+### Group-Level Date Overrides
+
+Individual groups can override league-level dates:
+
+```javascript
+{ 
+  league: "NCAAF", 
+  from: "08-15",    // League shows Aug 15 - Jan 15
+  to: "01-15",
+  groups: [
+    "Big Ten Conference",
+    { 
+      name: "Bowl Games", 
+      from: "12-15",    // This group only shows Dec 15 - Jan 31
+      to: "01-31" 
+    }
+  ]
+}
+```
+
+### Combined Example
+
+```javascript
+sports: [
+  { 
+    league: "MLB", 
+    groups: ["American League West", "AL Wild Card"], 
+    highlightTeam: "SEA",
+    from: "03-01", 
+    to: "11-01" 
+  },
+  { 
+    league: "NFL", 
+    groups: ["AFC North"], 
+    highlightTeam: "BAL",
+    from: "09-01", 
+    to: "02-15" 
+  }
+]
+```
+
+## Team Abbreviations for Highlighting
+
+When using the `highlightTeam` feature, use the standard ESPN team abbreviations:
+
+### Major Leagues
+- **MLB**: SEA, NYY, LAD, BOS, SF, CHC, ATL, MIA, etc.
+- **NFL**: SEA, NE, SF, GB, DAL, NYG, PHI, BAL, etc.  
+- **NBA**: LAL, BOS, MIA, GSW, CHI, NYK, PHI, SA, etc.
+- **NHL**: SEA, BOS, NYR, TOR, MTL, CHI, DET, VGK, etc.
+
+### How to Find Team Abbreviations
+1. Look at your current standings display - abbreviations are shown when `nameStyle: "abbreviation"` is used
+2. Check ESPN.com standings pages - they show the standard abbreviations
+3. Most are intuitive: Seattle = SEA, Boston = BOS, Los Angeles Lakers = LAL, etc.
+4. Note some teams have specific abbreviations: Golden State Warriors = GSW, Vegas Golden Knights = VGK
 
 ## Available Leagues and Groups
 

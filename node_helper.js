@@ -104,7 +104,7 @@ module.exports = NodeHelper.create({
   // Get active groups for a sport (only groups that are in date range)
   getActiveGroups: function(sport, fakeDate) {
     if (!sport.groups || sport.groups.length === 0) {
-      return []
+      return undefined
     }
     
     return sport.groups.filter(group => {
@@ -341,7 +341,7 @@ module.exports = NodeHelper.create({
         groups: this.getActiveGroups(activeSports[i], fakeDate)
       }
       
-      Log.info(`[MMM-MyStandings-Helper] Sport ${sportWithActiveGroups.league}: ${activeSports[i].groups?.length || 0} configured groups, ${sportWithActiveGroups.groups.length} active groups`)
+      Log.info(`[MMM-MyStandings-Helper] Sport ${sportWithActiveGroups.league}: ${activeSports[i].groups?.length || 0} configured groups, ${sportWithActiveGroups.groups?.length} active groups`)
       
       var sportUrls = this.getSportUrls(sportWithActiveGroups, config)
       Log.info(`[MMM-MyStandings-Helper] Sport ${sportWithActiveGroups.league} generated ${sportUrls.length} URLs`)
@@ -423,7 +423,7 @@ module.exports = NodeHelper.create({
           sportUrls.push(mlbUrl)
           Log.info(`[MMM-MyStandings-Helper] Added MLB PO URL: ${mlbUrl}`)
         }
-        if (!sport.groups || mlb_l3.some(item => sport.groups.includes(item))) {
+        if (!sport.groups || sport.groups.length == 0 || mlb_l3.some(item => sport.groups.includes(item))) {
           const mlbUrl = url + 'baseball/mlb/standings?level=3&sort=gamesbehind:asc,winpercent:desc'
           sportUrls.push(mlbUrl)
           Log.info(`[MMM-MyStandings-Helper] Added MLB L3 URL: ${mlbUrl}`)
@@ -440,7 +440,7 @@ module.exports = NodeHelper.create({
           sportUrls.push(nbaUrl)
           Log.info(`[MMM-MyStandings-Helper] Added NBA L2 URL: ${nbaUrl}`)
         }
-        if (!sport.groups || nba_l3.some(item => sport.groups.includes(item))) {
+        if (!sport.groups || sport.groups.length == 0 || nba_l3.some(item => sport.groups.includes(item))) {
           const nbaUrl = url + 'basketball/nba/standings?level=3&sort=gamesbehind:asc,winpercent:desc'
           sportUrls.push(nbaUrl)
           Log.info(`[MMM-MyStandings-Helper] Added NBA L3 URL: ${nbaUrl}`)
@@ -462,7 +462,7 @@ module.exports = NodeHelper.create({
           sportUrls.push(nflUrl)
           Log.info(`[MMM-MyStandings-Helper] Added NFL PO URL: ${nflUrl}`)
         }
-        if (!sport.groups || nfl_l3.some(item => sport.groups.includes(item))) {
+        if (!sport.groups || sport.groups.length == 0 || nfl_l3.some(item => sport.groups.includes(item))) {
           const nflUrl = url + 'football/nfl/standings?level=3&sort=winpercent:desc,playoffseed:asc'
           sportUrls.push(nflUrl)
           Log.info(`[MMM-MyStandings-Helper] Added NFL L3 URL: ${nflUrl}`)
@@ -489,7 +489,7 @@ module.exports = NodeHelper.create({
           sportUrls.push(nhlUrl)
           Log.info(`[MMM-MyStandings-Helper] Added NHL PO URL: ${nhlUrl}`)
         }
-        if (!sport.groups || nhl_l3.some(item => sport.groups.includes(item))) {
+        if (!sport.groups || sport.groups.length == 0 || nhl_l3.some(item => sport.groups.includes(item))) {
           const nhlUrl = url + 'hockey/nhl/standings?level=3&sort=points:desc,winpercent:desc,playoffseed:asc'
           sportUrls.push(nhlUrl)
           Log.info(`[MMM-MyStandings-Helper] Added NHL L3 URL: ${nhlUrl}`)
@@ -543,7 +543,7 @@ module.exports = NodeHelper.create({
           sportUrls.push(wnbaUrl)
           Log.info(`[MMM-MyStandings-Helper] Added WNBA L1 URL: ${wnbaUrl}`)
         }
-        if (!sport.groups || wnba_l2.some(item => sport.groups.includes(item))) {
+        if (!sport.groups || sport.groups.length == 0 || wnba_l2.some(item => sport.groups.includes(item))) {
           const wnbaUrl = url + 'basketball/wnba/standings?level=2&sort=gamesbehind:asc,winpercent:desc,playoffseed:asc'
           sportUrls.push(wnbaUrl)
           Log.info(`[MMM-MyStandings-Helper] Added WNBA L2 URL: ${wnbaUrl}`)
@@ -559,7 +559,7 @@ module.exports = NodeHelper.create({
           sportUrls.push(nbagUrl)
           Log.info(`[MMM-MyStandings-Helper] Added NBAG L1 URL: ${nbagUrl}`)
         }
-        if (!sport.groups || nbag_l2.some(item => sport.groups.includes(item))) {
+        if (!sport.groups || sport.groups.length == 0 || nbag_l2.some(item => sport.groups.includes(item))) {
           const nbagUrl = url + 'basketball/nba-development/standings?level=2&sort=gamesbehind:asc,winpercent:desc,playoffseed:asc'
           sportUrls.push(nbagUrl)
           Log.info(`[MMM-MyStandings-Helper] Added NBAG L2 URL: ${nbagUrl}`)

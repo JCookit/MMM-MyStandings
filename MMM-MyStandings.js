@@ -13,6 +13,8 @@ Module.register('MMM-MyStandings', {
       { league: 'NCAAF', groups: ['Mountain West Conference'] },
       { league: 'NCAAM', groups: ['Conference USA'] },
       { league: 'NCAAW Rankings', groups: ['AP Top 25'] },
+      // Example with team highlighting:
+      // { league: 'MLB', groups: ['American League West'], highlightTeam: 'SEA' },
     ],
     nameStyle: 'short', // "abbreviation", "full", or "short"
     showLogos: true,
@@ -708,6 +710,22 @@ Module.register('MMM-MyStandings', {
           }
         }
 
+        // Check if this team should be highlighted
+        var team = formattedStandingsObject[h].standings.entries[i].team
+        for (var sportIdx in this.config.sports) {
+          // Handle playoff and wildcard variants by stripping suffixes
+          var configLeague = this.config.sports[sportIdx].league
+          var currentSport = sport.replace('_PLAYOFFS', '').replace('_WILDCARD', '')
+          
+          if (configLeague === currentSport && this.config.sports[sportIdx].highlightTeam) {
+            if (team.abbreviation === this.config.sports[sportIdx].highlightTeam) {
+              formattedStandingsObject[h].standings.entries[i].highlightTeam = true
+              Log.info(`[MMM-MyStandings] Highlighting team: ${team.abbreviation} (${team.displayName}) in ${sport}`)
+              break
+            }
+          }
+        }
+
         var newStats = []
         // records
         for (j = 0; j < formattedStandingsObject[h].standings.entries[i].stats.length; j++) {
@@ -1275,6 +1293,21 @@ Module.register('MMM-MyStandings', {
             }
           }
         }
+
+        // Check if this team should be highlighted
+        for (var sportIdx in this.config.sports) {
+          // Handle playoff and wildcard variants by stripping suffixes  
+          var configLeague = this.config.sports[sportIdx].league
+          var currentSport = sport.replace('_PLAYOFFS', '').replace('_WILDCARD', '').replace(' Rankings', '')
+          
+          if (configLeague === currentSport && this.config.sports[sportIdx].highlightTeam) {
+            if (team.abbreviation === this.config.sports[sportIdx].highlightTeam) {
+              formattedStandingsObject[poll].ranks[teamNo].highlightTeam = true
+              Log.info(`[MMM-MyStandings] Highlighting ranked team: ${team.abbreviation} (${team.displayName}) in ${sport}`)
+              break
+            }
+          }
+        }
       }
     }
 
@@ -1375,6 +1408,21 @@ Module.register('MMM-MyStandings', {
           }
           else if (this.localLogos[leagueForLogoPath] && this.localLogos[leagueForLogoPath].indexOf(formattedStandingsObject[groupNo].standings.entries[teamNo].team.abbreviation + '.png') !== -1) {
             formattedStandingsObject[groupNo].standings.entries[teamNo].team.logos[0].href = this.file('logos/' + leagueForLogoPath + '/' + formattedStandingsObject[groupNo].standings.entries[teamNo].team.abbreviation + '.png')
+          }
+        }
+
+        // Check if this team should be highlighted
+        var sportToCheck = sport.split('_')[1]
+        for (var sportIdx in this.config.sports) {
+          // Handle different sport name formats
+          var configLeague = this.config.sports[sportIdx].league
+          
+          if (configLeague === sportToCheck && this.config.sports[sportIdx].highlightTeam) {
+            if (formattedStandingsObject[groupNo].standings.entries[teamNo].team.abbreviation === this.config.sports[sportIdx].highlightTeam) {
+              formattedStandingsObject[groupNo].standings.entries[teamNo].highlightTeam = true
+              Log.info(`[MMM-MyStandings] Highlighting SNET team: ${formattedStandingsObject[groupNo].standings.entries[teamNo].team.abbreviation} (${formattedStandingsObject[groupNo].standings.entries[teamNo].team.displayName}) in ${sport}`)
+              break
+            }
           }
         }
       }

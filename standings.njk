@@ -9,13 +9,14 @@
 				</tr>
 				{% for tm in poll.ranks %}
 					{% if tm.current <= config.rankingLength %}
-						<tr>
+						{% set isHighlighted = (tm.highlightTeam) %}
+						<tr {% if isHighlighted %}class="highlighted-team"{% endif %}>
 							{% if config.showLogos === true %}
 								<td class="logo" align="center" valign="middle"><img src="{{tm.team.logos[0].href}}"/></td>
-								<td class="nameCell">
+								<td class="nameCell {% if isHighlighted %}highlighted-team-name{% endif %}">
 							{% else %}
 								<td></td>
-								<td class="nameCell nameCellNoLogo">
+								<td class="nameCell nameCellNoLogo {% if isHighlighted %}highlighted-team-name{% endif %}">
 							{% endif %}
 							<div class="rank">{{tm.current}}</div>
 							{% if config.nameStyle === "full" %}
@@ -66,13 +67,14 @@
 			{% endif %}
 			</tr>
 			{% for tm in division.standings.entries %}
-				<tr>
+				{% set isHighlighted = (tm.highlightTeam) %}
+				<tr {% if isHighlighted %}class="highlighted-team"{% endif %}>
 					{% if config.showLogos === true %}
 						<td class="logo" align="center" valign="middle"><img src="{{tm.team.logos[0].href}}"/></td>
-						<td class="nameCell">
+						<td class="nameCell {% if isHighlighted %}highlighted-team-name{% endif %}">
 					{% else %}
 						<td></td>
-						<td class="nameCell nameCellNoLogo">
+						<td class="nameCell nameCellNoLogo {% if isHighlighted %}highlighted-team-name{% endif %}">
 					{% endif %}
 					{% if 
 						("_WILDCARD" in currentSport or "_PLAYOFFS" in currentSport or 
