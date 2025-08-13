@@ -88,6 +88,36 @@ Module.register('MMM-MyStandings', {
   shortNameLookup: {},
   */
 
+  // Helper function to check if a group name matches the configured groups
+  // Handles both string groups and object groups with name property
+  isGroupConfigured: function(sportConfig, groupName) {
+    if (!sportConfig.groups) {
+      return false // No groups configured means show nothing
+    }
+    
+    return sportConfig.groups.some(group => {
+      if (typeof group === 'string') {
+        return group === groupName
+      } else if (typeof group === 'object' && group.name) {
+        return group.name === groupName
+      }
+      return false
+    })
+  },
+
+  // Helper function to check if a group name contains any of the configured group names
+  // Used for checking things like "American League" matches groups containing "American League East"
+  isGroupPartialMatch: function(sportConfig, groupName) {
+    if (!sportConfig.groups) {
+      return false
+    }
+    
+    return sportConfig.groups.some(group => {
+      const configGroupName = typeof group === 'string' ? group : group.name
+      return configGroupName && configGroupName.includes(groupName)
+    })
+  },
+
   // Start the module.
   start: function () {
     Log.info('Starting module: ' + this.name)
@@ -157,177 +187,6 @@ Module.register('MMM-MyStandings', {
       ignoreDivision: this.ignoreDivision,
     }
   },
-
-  getData: function (clearAll) {
-    // When we want to refresh data from the API call
-    if (clearAll === true) {
-      this.standingsInfo = []
-      this.standingsSportInfo = []
-      this.isLoaded = false
-    }
-
-    for (var i = 0; i < this.config.sports.length; i++) {
-      var sportUrls = []
-      switch (this.config.sports[i].league) {
-        case 'MLB':
-          if (this.config.sports[i].groups && this.mlb_l1.some(item => this.config.sports[i].groups.includes(item))) {
-            sportUrls.push(this.url + 'baseball/mlb/standings?level=1&sort=gamesbehind:asc,winpercent:desc,playoffseed:asc')
-          }
-          if (this.config.sports[i].groups && this.mlb_l2.some(item => this.config.sports[i].groups.includes(item))) {
-            sportUrls.push(this.url + 'baseball/mlb/standings?level=2&sort=gamesbehind:asc,winpercent:desc,playoffseed:asc')
-          }
-          if (this.config.sports[i].groups && this.mlb_wc.some(item => this.config.sports[i].groups.includes(item))) {
-            sportUrls.push(this.url + 'baseball/mlb/standings?view=wild-card&type=1&level=2&sort=gamesbehind:asc,winpercent:desc,playoffseed:asc&startingseason=2024&seasontype=2')
-          }
-          if (this.config.sports[i].groups && this.mlb_po.some(item => this.config.sports[i].groups.includes(item))) {
-            sportUrls.push(this.url + 'baseball/mlb/standings?view=playoff&level=2&sort=playoffseed:asc')
-          }
-          if (!this.config.sports[i].groups || this.mlb_l3.some(item => this.config.sports[i].groups.includes(item))) {
-            sportUrls.push(this.url + 'baseball/mlb/standings?level=3&sort=gamesbehind:asc,winpercent:desc')
-          }
-          break
-        case 'NBA':
-          if (this.config.sports[i].groups && this.nba_l1.some(item => this.config.sports[i].groups.includes(item))) {
-            sportUrls.push(this.url + 'basketball/nba/standings?level=1&sort=gamesbehind:asc,winpercent:desc')
-          }
-          if (this.config.sports[i].groups && this.nba_l2.some(item => this.config.sports[i].groups.includes(item))) {
-            sportUrls.push(this.url + 'basketball/nba/standings?level=2&sort=gamesbehind:asc,winpercent:desc,playoffseed:asc')
-          }
-          if (!this.config.sports[i].groups || this.nba_l3.some(item => this.config.sports[i].groups.includes(item))) {
-            sportUrls.push(this.url + 'basketball/nba/standings?level=3&sort=gamesbehind:asc,winpercent:desc')
-          }
-          break
-        case 'NFL':
-          if (this.config.sports[i].groups && this.nfl_l1.some(item => this.config.sports[i].groups.includes(item))) {
-            sportUrls.push(this.url + 'football/nfl/standings?level=1&sort=winpercent:desc,playoffseed:asc')
-          }
-          if (this.config.sports[i].groups && this.nfl_l2.some(item => this.config.sports[i].groups.includes(item))) {
-            sportUrls.push(this.url + 'football/nfl/standings?level=2&sort=winpercent:desc,playoffseed:asc')
-          }
-          if (this.config.sports[i].groups && this.nfl_po.some(item => this.config.sports[i].groups.includes(item))) {
-            sportUrls.push(this.url + 'football/nfl/standings?view=playoff&sort=playoffseed:asc')
-          }
-          if (!this.config.sports[i].groups || this.nfl_l3.some(item => this.config.sports[i].groups.includes(item))) {
-            sportUrls.push(this.url + 'football/nfl/standings?level=3&sort=winpercent:desc,playoffseed:asc')
-          }
-          break
-        case 'NHL':
-          if (this.config.sports[i].groups && this.nhl_l1.some(item => this.config.sports[i].groups.includes(item))) {
-            sportUrls.push(this.url + 'hockey/nhl/standings?level=1&sort=points:desc,winpercent:desc,playoffseed:asc')
-          }
-          if (this.config.sports[i].groups && this.nhl_l2.some(item => this.config.sports[i].groups.includes(item))) {
-            sportUrls.push(this.url + 'hockey/nhl/standings?level=2&sort=points:desc,winpercent:desc,playoffseed:asc')
-          }
-          if (this.config.sports[i].groups && this.nhl_wc.some(item => this.config.sports[i].groups.includes(item))) {
-            sportUrls.push(this.url + 'hockey/nhl/standings?view=wild-card&type=3&level=2&sort=playoffseed%3Aasc%2Cpoints%3Adesc%2Cgamesplayed%3Aasc%2Crotwins%3Adesc&seasontype=2')
-          }
-          if (this.config.sports[i].groups && this.nhl_po.some(item => this.config.sports[i].groups.includes(item))) {
-            sportUrls.push(this.url + 'hockey/nhl/standings?view=playoff&level=2&sort=playoffseed:asc')
-          }
-          if (!this.config.sports[i].groups || this.nhl_l3.some(item => this.config.sports[i].groups.includes(item))) {
-            sportUrls.push(this.url + 'hockey/nhl/standings?level=3&sort=points:desc,winpercent:desc,playoffseed:asc')
-          }
-          break
-        case 'MLS':
-          sportUrls.push(this.url + 'soccer/usa.1/standings?sort=rank:asc')
-          break
-        case 'NCAAF':
-          sportUrls.push(this.url + 'football/college-football/standings?group=80&level=3&sort=leaguewinpercent:desc,vsconf_wins:desc,vsconf_gamesbehind:asc,vsconf_playoffseed:asc,wins:desc,losses:desc,playoffseed:asc,alpha:asc')
-          break
-        case 'NCAAM':
-          sportUrls.push(this.url + 'basketball/mens-college-basketball/standings?group=50&sort=playoffseed:asc,vsconf_winpercent:desc,vsconf_wins:desc,vsconf_losses:asc,vsconf_gamesbehind:asc&includestats=playoffseed,vsconf,vsconf_gamesbehind,vsconf_winpercent,total,winpercent,home,road,streak,vsaprankedteams,vsusarankedteams')
-          break
-        case 'NCAAW':
-          sportUrls.push(this.url + 'basketball/womens-college-basketball/standings?group=50&sort=playoffseed:asc,vsconf_winpercent:desc,vsconf_wins:desc,vsconf_losses:asc,vsconf_gamesbehind:asc&includestats=playoffseed,vsconf,vsconf_gamesbehind,vsconf_winpercent,total,winpercent,home,road,streak,vsaprankedteams,vsusarankedteams')
-          break
-        case 'NCAAF Rankings':
-          sportUrls.push(this.urlRanking + 'football/college-football/rankings')
-          break
-        case 'NCAAM Rankings':
-          sportUrls.push(this.urlRanking + 'basketball/mens-college-basketball/rankings')
-          break
-        case 'NCAAW Rankings':
-          sportUrls.push(this.urlRanking + 'basketball/womens-college-basketball/rankings')
-          break
-        case 'WNBA':
-          if (this.config.sports[i].groups && this.wnba_l1.some(item => this.config.sports[i].groups.includes(item))) {
-            sportUrls.push(this.url + 'basketball/wnba/standings?level=1&sort=gamesbehind:asc,winpercent:desc')
-          }
-          if (!this.config.sports[i].groups || this.wnba_l2.some(item => this.config.sports[i].groups.includes(item))) {
-            sportUrls.push(this.url + 'basketball/wnba/standings?level=2&sort=gamesbehind:asc,winpercent:desc,playoffseed:asc')
-          }
-          break
-        case 'NBAG':
-          if (this.config.sports[i].groups && this.nbag_l1.some(item => this.config.sports[i].groups.includes(item))) {
-            sportUrls.push(this.url + 'basketball/nba-development/standings?level=1&sort=gamesbehind:asc,winpercent:desc')
-          }
-          if (!this.config.sports[i].groups || this.nbag_l2.some(item => this.config.sports[i].groups.includes(item))) {
-            sportUrls.push(this.url + 'basketball/nba-development/standings?level=2&sort=gamesbehind:asc,winpercent:desc,playoffseed:asc')
-          }
-          break
-        case 'AFL':
-          sportUrls.push(this.url + 'australian-football/afl/standings?&sort=rank:asc')
-          break
-        case 'PLL':
-          sportUrls.push(this.url + 'lacrosse/pll/standings?sort=winPercentage:desc')
-          break
-        case 'NLL':
-          sportUrls.push(this.url + 'lacrosse/nll/standings?sort=winPercentage:desc')
-          break
-        case 'Olympics':
-          sportUrls.push(`https://stats-api.sportsnet.ca/web_standings?league=oly&season_year=`)
-          break
-        case 'CFL':
-          sportUrls.push(`https://stats-api.sportsnet.ca/web_standings?league=cfl&season_year=`)
-          break
-        default: // soccer & rugby
-          sportUrls.push(this.url + this.SOCCER_LEAGUE_PATHS[this.config.sports[i].league] + '/standings?sort=rank:asc')
-          break
-      }
-
-      for (var j = 0; j < sportUrls.length; j++) {
-        var notificationSuffix = ''
-        if (sportUrls[j].includes('view=playoff')) {
-          notificationSuffix = '_PLAYOFFS'
-        }
-        else if (sportUrls[j].includes('view=wild-card')) {
-          notificationSuffix = '_WILDCARD'
-        }
-        this.sendSocketNotification(
-          'STANDINGS_RESULT_ESPN-' + this.config.sports[i].league + notificationSuffix,
-          {
-            url: sportUrls[j],
-            uniqueID: this.identifier,
-          },
-        )
-      }
-    }
-
-    var nextLoad = this.config.updateInterval
-    if (this.standings === null) {
-      nextLoad = 60 * 1000
-    }
-
-    var self = this
-    setTimeout(function () {
-      self.requestDataRefresh()
-    }, nextLoad)
-  },
-
-  // UNUSED: Old data fetching method above - replaced by node_helper architecture
-  // UNUSED: Manual data refresh - replaced by node_helper timer management
-  // requestDataRefresh: function() {
-  //   Log.info('[MMM-MyStandings] Requesting data refresh from node_helper')
-  //   this.standingsInfo = []
-  //   this.standingsSportInfo = []
-  //   this.isLoaded = false
-  //   this.dataFetchInProgress = true
-  //   
-  //   this.sendSocketNotification('MMM-MYSTANDINGS-FETCH-DATA', {
-  //     uniqueID: this.identifier,
-  //     sports: this.config.sports
-  //   })
-  // },
 
   socketNotificationReceived: function (notification, payload) {
     Log.info(`[MMM-MyStandings] Received notification: ${notification} for ${payload.uniqueID}, my ID: ${this.identifier}`)
@@ -615,7 +474,7 @@ Module.register('MMM-MyStandings', {
         if (this.config.sports[leagueIdx].league === sport) {
           Log.info(`[MMM-MyStandings] Found matching sport config for ${sport}`)
           
-          if ((this.config.sports[leagueIdx].groups !== undefined && this.config.sports[leagueIdx].groups.includes(formattedStandingsObject[h].name)) || this.config.sports[leagueIdx].groups === undefined) {
+          if (this.isGroupConfigured(this.config.sports[leagueIdx], formattedStandingsObject[h].name) || this.config.sports[leagueIdx].groups === undefined) {
             hasMatch = true
             Log.info(`[MMM-MyStandings] Division "${formattedStandingsObject[h].name}" MATCHES configuration`)
           }
@@ -623,9 +482,9 @@ Module.register('MMM-MyStandings', {
           else if (this.config.sports[leagueIdx].groups !== undefined) {
             
             const isMLBAmericanLeague = sport === 'MLB' && formattedStandingsObject[h].name === 'American League' && 
-              this.config.sports[leagueIdx].groups.some(group => group.includes('American League'))
+              this.isGroupPartialMatch(this.config.sports[leagueIdx], 'American League')
             const isMLBNationalLeague = sport === 'MLB' && formattedStandingsObject[h].name === 'National League' && 
-              this.config.sports[leagueIdx].groups.some(group => group.includes('National League'))
+              this.isGroupPartialMatch(this.config.sports[leagueIdx], 'National League')
             
             if (isMLBAmericanLeague || isMLBNationalLeague) {
               hasMatch = true
@@ -649,14 +508,14 @@ Module.register('MMM-MyStandings', {
           }
         }
         else if (this.config.sports[leagueIdx].league + '_PLAYOFFS' === sport) {
-          if (this.config.sports[leagueIdx].groups.includes(formattedStandingsObject[h].abbreviation + ' Playoffs')) {
+          if (this.isGroupConfigured(this.config.sports[leagueIdx], formattedStandingsObject[h].abbreviation + ' Playoffs')) {
             hasMatch = true
             formattedStandingsObject[h].name = formattedStandingsObject[h].abbreviation + ' Playoffs'
             formattedStandingsObject[h].shortName = formattedStandingsObject[h].abbreviation + ' Playoffs'
           }
         }
         else if (this.config.sports[leagueIdx].league + '_WILDCARD' === sport) {
-          if (this.config.sports[leagueIdx].groups.includes(formattedStandingsObject[h].abbreviation + ' Wild Card')) {
+          if (this.isGroupConfigured(this.config.sports[leagueIdx], formattedStandingsObject[h].abbreviation + ' Wild Card')) {
             hasMatch = true
             formattedStandingsObject[h].name = formattedStandingsObject[h].abbreviation + ' Wild Card'
             formattedStandingsObject[h].shortName = formattedStandingsObject[h].abbreviation + ' Wild Card'
@@ -1242,7 +1101,7 @@ Module.register('MMM-MyStandings', {
       // We only want to show divisions/groups that we have configured
       for (var league in this.config.sports) {
         if (this.config.sports[league].league === sport) {
-          if (this.config.sports[league].groups !== undefined && this.config.sports[league].groups.includes(formattedStandingsObject[poll].name)) {
+          if (this.config.sports[league].groups !== undefined && this.isGroupConfigured(this.config.sports[league], formattedStandingsObject[poll].name)) {
             hasMatch = true
           }
           else {
@@ -1327,18 +1186,22 @@ Module.register('MMM-MyStandings', {
         var groups = this.config.sports[league].groups
       }
     }
+    
+    // Handle both string and object groups by extracting names
+    var groupNames = groups ? groups.map(group => typeof group === 'string' ? group : group.name) : []
+    
     var formattedStandingsObject = []
-    for (var groupNo in groups) {
+    for (var groupNo in groupNames) {
       formattedStandingsObject.push({})
-      formattedStandingsObject[groupNo].shortName = `${sport.replace('_', ' ')} - ${groups[groupNo]}`
-      formattedStandingsObject[groupNo].name = `${sport.replace('_', ' ')} - ${groups[groupNo]}`
+      formattedStandingsObject[groupNo].shortName = `${sport.replace('_', ' ')} - ${groupNames[groupNo]}`
+      formattedStandingsObject[groupNo].name = `${sport.replace('_', ' ')} - ${groupNames[groupNo]}`
       formattedStandingsObject[groupNo].standings = {}
       formattedStandingsObject[groupNo].standings.entries = []
 
       // Sort data
       if (sport.split('_')[1] == 'Olympics') {
         StandingsObject.sort(function (a, b) {
-          return b[groups[groupNo].toLowerCase()] - a[groups[groupNo].toLowerCase()]
+          return b[groupNames[groupNo].toLowerCase()] - a[groupNames[groupNo].toLowerCase()]
         })
       }
       else {
@@ -1366,7 +1229,7 @@ Module.register('MMM-MyStandings', {
 
         switch (sport.split('_')[1]) {
           case 'CFL':
-            if (StandingsObject[teamNo].division.name === groups[groupNo]) {
+            if (StandingsObject[teamNo].division.name === groupNames[groupNo]) {
               formattedStandingsObject[groupNo].standings.entries[teamNo].stats[0] = []
               formattedStandingsObject[groupNo].standings.entries[teamNo].stats[0].name = 'wins'
               formattedStandingsObject[groupNo].standings.entries[teamNo].stats[0].value = StandingsObject[teamNo].stats.wins
